@@ -1,0 +1,223 @@
+#include <iostream>
+#include <vector>
+#include <cstdlib>
+#include <omp.h>
+
+using namespace std;
+
+// Generate pseudo-random matrix with elements in [min, max]
+void generateMatrix(vector<vector<double>>& matrix, const int n, const double min = 0.0, const double max = 1.0) {
+    const double difference = max - min;
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            const double random = (rand() % 1001) / 1000.0;
+            matrix[i][j] = min + (random - difference / 2.0) * difference;
+        }
+    }
+}
+
+// Create matrix with one elements
+void createOnesMatrix(vector<vector<double>>& matrix, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            matrix[i][j] = 1.0;
+        }
+    }
+}
+
+// Create matrix with one elements on diagonal
+void createIdentityMatrix(vector<vector<double>>& matrix, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            matrix[i][j] = (i == j) ? 1.0 : 0.0;
+        }
+    }
+}
+
+// Create matrix with zero or one elements
+void createZerosOrOnesMatrix(vector<vector<double>>& matrix, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            matrix[i][j] = rand() % 2;
+        }
+    }
+}
+
+// Multiply matrix A on matrix B with result matrix C
+void multiplyMatrices(const vector<vector<double>>& A, const vector<vector<double>>& B, vector<vector<double>>& C, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            C[i][j] = 0;
+            for (int k = 0; k < n; k++) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+// Multiply matrix A on constant c with result matrix B
+void multiplyMatrix(const vector<vector<double>>& A, const double c, vector<vector<double>>& B, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            B[i][j] = c * A[i][j];
+        }
+    }
+}
+
+// Compute matrix trace
+double traceMatrix(const vector<vector<double>>& matrix, const int n) {
+    double sum = 0.0;
+    #pragma omp parallel for reduction(+:sum)
+    for (int i = 0; i < n; i++) {
+        sum += matrix[i][i];
+    }
+    return sum;
+}
+
+// Compute matrix A logical "and" matrix B with result matrix C
+void logicalAndMatrices(const vector<vector<double>>& A, const vector<vector<double>>& B, vector<vector<double>>& C, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            C[i][j] = (A[i][j] != 0.0 && B[i][j] != 0.0) ? 1.0 : 0.0;
+        }
+    }
+}
+
+// Compute matrix A + matrix B + matrix C with result matrix D
+void summarizeMatrices(const vector<vector<double>>& A, const vector<vector<double>>& B, const vector<vector<double>>& C, vector<vector<double>>& D, const int n) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            D[i][j] = A[i][j] + B[i][j] + C[i][j];
+        }
+    }
+}
+
+// Fill matrices B, C, E, I, M
+void fill_matrices(vector<vector<double>>& B, vector<vector<double>>& C, vector<vector<double>>& E, vector<vector<double>>& I, vector<vector<double>>& M, const int n) {
+    generateMatrix(B, n, 0.0, 1.0);
+    generateMatrix(C, n, 0.0, 1.0);
+    createOnesMatrix(E, n);
+    createIdentityMatrix(I, n);
+    createZerosOrOnesMatrix(M, n);
+}
+
+// Compute result matrix A
+void compute_matrix(const vector<vector<double>>& B, const vector<vector<double>>& C, const vector<vector<double>>& E, const vector<vector<double>>& I, const vector<vector<double>>& M, vector<vector<double>>& A, const int n) {
+    // Create temporary matrices
+    vector<vector<double>> B2(n, vector<double>(n));
+    vector<vector<double>> B3(n, vector<double>(n));
+    vector<vector<double>> B3C(n, vector<double>(n));
+    vector<vector<double>> Tr_B3C_E(n, vector<double>(n));
+    vector<vector<double>> B_and_M(n, vector<double>(n));
+
+    // Compute B^3
+    multiplyMatrices(B, B, B2, n);
+    multiplyMatrices(B2, B, B3, n);
+    // Compute B^3 * C
+    multiplyMatrices(B3, C, B3C, n);
+    // Compute Tr(B^3 * C)
+    double Tr_B3C = traceMatrix(B3C, n);
+    // Compute Tr(B^3 * C) * E
+    multiplyMatrix(E, Tr_B3C, Tr_B3C_E, n);
+    // Compute B && M
+    logicalAndMatrices(B, M, B_and_M, n);
+    // Compute Tr(B^3 * C) * E + I + B && M
+    summarizeMatrices(Tr_B3C_E, I, B_and_M, A, n);
+}
+
+// Check equivalence of matrix A and matrix B with precision
+bool equals_matrices(const vector<vector<double>>& A, const vector<vector<double>>& B, const int n, const double precision) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (abs(A[i][j] - B[i][j]) > precision) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Print matrix
+void print_matrix(const vector<vector<double>>& matrix, const int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            printf("%.2f ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        printf("Invalid arguments count\n");
+        return 1;
+    }
+    int n = std::atoi(argv[1]); // Setting user's matrices dimension
+    if (n < 2) {
+        printf("Invalid matrices dimension\n");
+        return 1;
+    }
+    const int pthreads = 8;
+    const int average = 5;
+
+    // Create matrices
+    vector<vector<double>> B(n, vector<double>(n));
+    vector<vector<double>> C(n, vector<double>(n));
+    vector<vector<double>> E(n, vector<double>(n));
+    vector<vector<double>> I(n, vector<double>(n));
+    vector<vector<double>> M(n, vector<double>(n));
+    vector<vector<double>> A(n, vector<double>(n));
+    vector<vector<double>> A1(n, vector<double>(n));
+
+    // Fill matrices
+    srand(19); // Setting the pseudo-random generation seed for reproducibility of results
+    fill_matrices(B, C, E, I, M, n);
+
+    // Compute result matrices A with power of two number of threads
+    omp_set_dynamic(0); // Disable dynamic teams to force number of threads setting
+    double t1 = 0.0;
+    for (int i = 0; i <= pthreads; i++) {
+        const int nthreads = 1 << i; // Setting power of two number of threads
+        double time = 0.0;
+        for (int j = 1; j <= average; j++) {
+            omp_set_num_threads(nthreads); // Setting number of threads for all subsequent parallel regions
+            printf("[%d] Computing %d threads result matrix A", j, nthreads);
+
+            const double t0 = omp_get_wtime();
+            compute_matrix(B, C, E, I, M, A, n);
+            const double t = omp_get_wtime() - t0;
+            time += t;
+            printf(" -> %.2fsec\n", t);
+
+            if (i == 0 && j == 1) {
+                A1 = A; // Save single thread result matrix A
+                // print_matrix(A1, min(5, n)); // Preview single thread result matrix A
+            } else if (!equals_matrices(A1, A, n, 1.0E-3)) { // Compare single thread result matrix A with current number of threads result matrix A
+                printf("Single thread result matrix A not equals to %d threads result matrix A\n", nthreads);
+                return 1;
+            }
+        }
+
+        const double tn = time / average;
+        if (i == 0) {
+            t1 = tn;
+        }
+        printf("-------------------\n");
+        printf("Average statistics [%d]:\n", average);
+        printf("Computation time: %.2fsec\n", tn);
+        const double speedup = t1 / tn;
+        printf("Speedup: %.2f\n", speedup);
+        const double scalability = speedup / nthreads;
+        printf("Scalability: %.2f\n\n", scalability);
+    }
+
+    return 0;
+}

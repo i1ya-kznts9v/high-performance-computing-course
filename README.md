@@ -1,2 +1,4 @@
-# high-performance-computing-course
-The high performance computing course tasks
+# High performance computing course
+
+## Tasks
+1. OpenMP
