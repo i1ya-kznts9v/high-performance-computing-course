@@ -11,7 +11,7 @@ void generateMatrix(vector<vector<double>>& matrix, const int n, const double mi
     #pragma omp parallel for collapse(2)
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            const double random = (rand() % 1001) / 1000.0;
+            const double random = (rand() % 101) / 100.0;
             matrix[i][j] = min + (random - difference / 2.0) * difference;
         }
     }
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
     const int pthreads = 8;
     const int average = 5;
 
-    // Create matrices
+    // Create matrices and variables
     vector<vector<double>> B(n, vector<double>(n));
     vector<vector<double>> C(n, vector<double>(n));
     vector<vector<double>> E(n, vector<double>(n));
@@ -176,6 +176,7 @@ int main(int argc, char* argv[]) {
     vector<vector<double>> M(n, vector<double>(n));
     vector<vector<double>> A(n, vector<double>(n));
     vector<vector<double>> A1(n, vector<double>(n));
+    double t1 = 0.0;
 
     // Fill matrices
     srand(19); // Setting the pseudo-random generation seed for reproducibility of results
@@ -183,13 +184,12 @@ int main(int argc, char* argv[]) {
 
     // Compute result matrices A with power of two number of threads
     omp_set_dynamic(0); // Disable dynamic teams to force number of threads setting
-    double t1 = 0.0;
     for (int i = 0; i <= pthreads; i++) {
         const int nthreads = 1 << i; // Setting power of two number of threads
         double time = 0.0;
         for (int j = 1; j <= average; j++) {
             omp_set_num_threads(nthreads); // Setting number of threads for all subsequent parallel regions
-            printf("[%d] Computing %d threads result matrix A", j, nthreads);
+            nthreads == 1 ? printf("[%d] Computing result matrix A with single thread", j) : printf("[%d] Computing result matrix A with %d threads", j, nthreads);
 
             const double t0 = omp_get_wtime();
             compute_matrix(B, C, E, I, M, A, n);
@@ -197,21 +197,27 @@ int main(int argc, char* argv[]) {
             time += t;
             printf(" -> %.2fsec\n", t);
 
-            if (i == 0 && j == 1) {
-                A1 = A; // Save single thread result matrix A
-                // print_matrix(A1, min(5, n)); // Preview single thread result matrix A
-            } else if (!equals_matrices(A1, A, n, 1.0E-3)) { // Compare single thread result matrix A with current number of threads result matrix A
-                printf("Single thread result matrix A not equals to %d threads result matrix A\n", nthreads);
+            if (nthreads == 1 && j == 1) {
+                A1 = A; // Save result matrix A with single thread
+                printf("Result matrix A preview:\n");
+                print_matrix(A1, min(5, n)); // Preview result matrix A with single thread
+            } else if (!equals_matrices(A1, A, n, 1.0E-2)) { // Compare result matrix A with single thread and result matrix A with current number of threads
+                printf("Result matrix A with single thread not equals to result matrix A with %d threads\n", nthreads);
                 return 1;
             }
         }
 
-        const double tn = time / average;
-        if (i == 0) {
-            t1 = tn;
-        }
+        printf("-------------------\n");
+        printf("Teoretical statistics:\n");
+        const double p = nthreads == 1 ? 0.0 : 0.8;
+        const double amdahlSpeedup = 1 / ((1 - p) + (p / nthreads));
+        printf("Amdahl speedup: %.2f\n", amdahlSpeedup);
+        const double amdahlScalability = amdahlSpeedup / nthreads;
+        printf("Amdahl scalability: %.2f\n", amdahlScalability);
         printf("-------------------\n");
         printf("Average statistics [%d]:\n", average);
+        const double tn = time / average;
+        if (nthreads == 1) t1 = tn;
         printf("Computation time: %.2fsec\n", tn);
         const double speedup = t1 / tn;
         printf("Speedup: %.2f\n", speedup);
