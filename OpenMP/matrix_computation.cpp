@@ -209,7 +209,7 @@ int main(int argc, char* argv[]) {
 
         printf("-------------------\n");
         printf("Teoretical statistics:\n");
-        const double p = nthreads == 1 ? 0.0 : 0.8;
+        const double p = nthreads == 1 ? 0.0 : 0.9;
         const double amdahlSpeedup = 1 / ((1 - p) + (p / nthreads));
         printf("Amdahl speedup: %.2f\n", amdahlSpeedup);
         const double amdahlScalability = amdahlSpeedup / nthreads;
