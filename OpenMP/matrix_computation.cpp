@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <vector>
 #include <cstdlib>
 #include <omp.h>
@@ -155,6 +157,23 @@ void print_matrix(const vector<vector<double>>& matrix, const int n) {
     }
 }
 
+// Write results to CSV
+int writeResultsToCSV(const string& filename, const vector<tuple<int, double, double, double, double>>& results) {
+    ofstream file(filename);
+    if (!file.is_open()) {
+        printf("Unable to write results to %s\n", filename);
+        return 1;
+    }
+    // CSV header
+    file << "Threads, Amdahl speedup, Speedup, Amdahl scalability, Scalability\n";
+    // Write results
+    for (const auto& [nthreads, amdahlSpeedup, speedup, amdahlScalability, scalability] : results) {
+        file << fixed << setprecision(2) << nthreads << "," << amdahlSpeedup << "," << speedup << "," << amdahlScalability << "," << scalability << "\n";
+    }
+    file.close();
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         printf("Invalid arguments count\n");
@@ -176,6 +195,7 @@ int main(int argc, char* argv[]) {
     vector<vector<double>> M(n, vector<double>(n));
     vector<vector<double>> A(n, vector<double>(n));
     vector<vector<double>> A1(n, vector<double>(n));
+    vector<tuple<int, double, double, double, double>> results;
     double t1 = 0.0;
 
     // Fill matrices
@@ -223,7 +243,8 @@ int main(int argc, char* argv[]) {
         printf("Speedup: %.2f\n", speedup);
         const double scalability = speedup / nthreads;
         printf("Scalability: %.2f\n\n", scalability);
+        results.emplace_back(nthreads, amdahlSpeedup, speedup, amdahlScalability, scalability);
     }
 
-    return 0;
+    return writeResultsToCSV("results_" + to_string(n) + ".csv", results);
 }
