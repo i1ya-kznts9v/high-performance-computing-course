@@ -14,7 +14,7 @@ def run_matrix_computation(dimension):
         raise ChildProcessError("Matrix computation compilation error")
 
     result = subprocess.run(
-        ['./matrix_computation.exe'] + [str(dimension)],
+        ['./matrix_computation'] + [str(dimension)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
