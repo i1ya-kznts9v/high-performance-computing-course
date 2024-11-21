@@ -165,10 +165,10 @@ int writeResultsToCSV(const string& filename, const vector<tuple<int, double, do
         return 1;
     }
     // CSV header
-    file << "Threads, Amdahl speedup, Speedup, Amdahl scalability, Scalability\n";
+    file << "Threads,Amdahl speedup,Speedup,Amdahl efficency,Efficency\n";
     // Write results
-    for (const auto& [nthreads, amdahlSpeedup, speedup, amdahlScalability, scalability] : results) {
-        file << fixed << setprecision(2) << nthreads << "," << amdahlSpeedup << "," << speedup << "," << amdahlScalability << "," << scalability << "\n";
+    for (const auto& [nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency] : results) {
+        file << fixed << setprecision(2) << nthreads << "," << amdahlSpeedup << "," << speedup << "," << amdahlEfficency << "," << efficency << "\n";
     }
     file.close();
     return 0;
@@ -232,8 +232,8 @@ int main(int argc, char* argv[]) {
         const double p = nthreads == 1 ? 0.0 : 0.9;
         const double amdahlSpeedup = 1 / ((1 - p) + (p / nthreads));
         printf("Amdahl speedup: %.2f\n", amdahlSpeedup);
-        const double amdahlScalability = amdahlSpeedup / nthreads;
-        printf("Amdahl scalability: %.2f\n", amdahlScalability);
+        const double amdahlEfficency = amdahlSpeedup / nthreads;
+        printf("Amdahl efficency: %.2f\n", amdahlEfficency);
         printf("-------------------\n");
         printf("Average statistics [%d]:\n", average);
         const double tn = time / average;
@@ -241,9 +241,9 @@ int main(int argc, char* argv[]) {
         printf("Computation time: %.2fsec\n", tn);
         const double speedup = t1 / tn;
         printf("Speedup: %.2f\n", speedup);
-        const double scalability = speedup / nthreads;
-        printf("Scalability: %.2f\n\n", scalability);
-        results.emplace_back(nthreads, amdahlSpeedup, speedup, amdahlScalability, scalability);
+        const double efficency = speedup / nthreads;
+        printf("Efficency: %.2f\n\n", efficency);
+        results.emplace_back(nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency);
     }
 
     return writeResultsToCSV("results_" + to_string(n) + ".csv", results);
