@@ -4,29 +4,46 @@ import matplotlib.pyplot as plt
 
 
 def run_matrix_computation(dimension):
-    result = subprocess.run(
+    sp = subprocess.run(
         ['g++', '-fopenmp', '-o', 'matrix_computation', 'matrix_computation.cpp'],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
     )
-    if result.returncode != 0:
-        raise ChildProcessError("Matrix computation compilation error")
+    if sp.returncode != 0:
+        raise ChildProcessError('Matrix computation compilation error')
 
-    result = subprocess.run(
+    sp = subprocess.run(
         ['./matrix_computation'] + [str(dimension)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
     )
-    if result.returncode != 0:
-        raise ChildProcessError("Matrix computation error")
+    if sp.returncode != 0:
+        raise ChildProcessError('Matrix computation error')
 
 
 def read_csv(file_name):
     df = pd.read_csv(file_name)
     print(f'{df}\n')
     return df
+
+
+def plot_times(df, dimension):
+    plt.figure(figsize=(15, 10))
+
+    x = df['Threads']
+    y = df['Average']
+    plt.plot(x, y, marker='o', color='b', label='Average')
+    plt.xlabel('Number of threads')
+    plt.ylabel('Time (sec.)')
+    plt.title(f'Dependence of time on the number of threads for matrices ({dimension}, {dimension})')
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(f'times_{dimension}.png')
+    plt.show()
 
 
 def plot_speedup(df, dimension):
@@ -72,8 +89,8 @@ def plot_scalability(*dfs):
 
     x = dfs[0][0]['Threads']
     for df in dfs:
-        y = df[0]['Speedup']
         dimension = df[1]
+        y = df[0]['Speedup']
         plt.plot(x, y, marker='o', label=f'Speedup for matrices ({dimension}, {dimension})')
     plt.xlabel('Number of threads')
     plt.ylabel('Speedup')
@@ -86,27 +103,31 @@ def plot_scalability(*dfs):
     plt.show()
 
 
-def main():
-    dimension100 = 100
-    run_matrix_computation(dimension100)
-    df100 = read_csv(f'results_{dimension100}.csv')
-    plot_speedup(df100, dimension100)
-    plot_efficency(df100, dimension100)
+def run_experiment(dimension):
+    run_matrix_computation(dimension)
 
+    times_df = read_csv(f'times_{dimension}.csv')
+    plot_times(times_df, dimension)
+
+    statistics_df = read_csv(f'statistics_{dimension}.csv')
+    plot_speedup(statistics_df, dimension)
+    plot_efficency(statistics_df, dimension)
+
+    return statistics_df
+
+
+def main():
+    run_experiment(500)
+    
     dimension1000 = 1000
-    run_matrix_computation(dimension1000)
-    df1000 = read_csv(f'results_{dimension1000}.csv')
-    plot_speedup(df1000, dimension1000)
-    plot_efficency(df1000, dimension1000)
+    statistics_df1000 = run_experiment(dimension1000)
 
     dimension2000 = 2000
-    run_matrix_computation(dimension2000)
-    df2000 = read_csv(f'results_{dimension2000}.csv')
-    plot_speedup(df2000, dimension2000)
-    plot_efficency(df2000, dimension2000)
+    statistics_df2000 = run_experiment(dimension2000)
 
-    plot_scalability((df1000, dimension1000), (df2000, dimension2000))
+    plot_scalability((statistics_df1000, dimension1000),
+                     (statistics_df2000, dimension2000))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

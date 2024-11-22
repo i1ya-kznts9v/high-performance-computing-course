@@ -157,21 +157,42 @@ void print_matrix(const vector<vector<double>>& matrix, const int n) {
     }
 }
 
-// Write results to CSV
-int writeResultsToCSV(const string& filename, const vector<tuple<int, double, double, double, double>>& results) {
+// Write times to CSV
+void writeTimesToCSV(const string& filename, const vector<vector<double>>& times, int pthreads, int average) {
     ofstream file(filename);
     if (!file.is_open()) {
-        printf("Unable to write results to %s\n", filename);
-        return 1;
+        printf("Unable to write times to %s\n", filename);
+    }
+    // CSV header
+    file << "Threads,";
+    for (int j = 1; j <= average; j++) {
+        file << to_string(j) << ",";
+    }
+    file << "Average\n";
+    // Write times
+    for (int i = 0; i < pthreads; i++) {
+        file << int(times[i][0]) << ",";
+        for (int j = 1; j <= average; j++) {
+            file << fixed << setprecision(2) << times[i][j] << ",";
+        }
+        file << fixed << setprecision(2) << times[i][average + 1] << "\n";
+    }
+    file.close();
+}
+
+// Write statistics to CSV
+void writeStatisticsToCSV(const string& filename, const vector<tuple<int, double, double, double, double>>& statistics) {
+    ofstream file(filename);
+    if (!file.is_open()) {
+        printf("Unable to write statistics to %s\n", filename);
     }
     // CSV header
     file << "Threads,Amdahl speedup,Speedup,Amdahl efficency,Efficency\n";
-    // Write results
-    for (const auto& [nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency] : results) {
+    // Write statistics
+    for (const auto& [nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency] : statistics) {
         file << fixed << setprecision(2) << nthreads << "," << amdahlSpeedup << "," << speedup << "," << amdahlEfficency << "," << efficency << "\n";
     }
     file.close();
-    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -179,7 +200,7 @@ int main(int argc, char* argv[]) {
         printf("Invalid arguments count\n");
         return 1;
     }
-    int n = std::atoi(argv[1]); // Setting user's matrices dimension
+    int n = atoi(argv[1]); // Setting user's matrices dimension
     if (n < 2) {
         printf("Invalid matrices dimension\n");
         return 1;
@@ -195,7 +216,8 @@ int main(int argc, char* argv[]) {
     vector<vector<double>> M(n, vector<double>(n));
     vector<vector<double>> A(n, vector<double>(n));
     vector<vector<double>> A1(n, vector<double>(n));
-    vector<tuple<int, double, double, double, double>> results;
+    vector<vector<double>> times(pthreads, vector<double>(average + 2));
+    vector<tuple<int, double, double, double, double>> statistics;
     double t1 = 0.0;
 
     // Fill matrices
@@ -204,20 +226,22 @@ int main(int argc, char* argv[]) {
 
     // Compute result matrices A with power of two number of threads
     omp_set_dynamic(0); // Disable dynamic teams to force number of threads setting
-    for (int i = 0; i <= pthreads; i++) {
+    for (int i = 0; i < pthreads; i++) {
         const int nthreads = 1 << i; // Setting power of two number of threads
+        times[i][0] = nthreads;
         double time = 0.0;
-        for (int j = 1; j <= average; j++) {
+        for (int j = 0; j < average; j++) {
             omp_set_num_threads(nthreads); // Setting number of threads for all subsequent parallel regions
-            nthreads == 1 ? printf("[%d] Computing result matrix A with single thread", j) : printf("[%d] Computing result matrix A with %d threads", j, nthreads);
+            nthreads == 1 ? printf("[%d] Computing result matrix A with single thread", j + 1) : printf("[%d] Computing result matrix A with %d threads", j + 1, nthreads);
 
             const double t0 = omp_get_wtime();
             compute_matrix(B, C, E, I, M, A, n);
             const double t = omp_get_wtime() - t0;
+            times[i][j + 1] = t;
             time += t;
-            printf(" -> %.2fsec\n", t);
+            printf(" -> %.2f (sec.)\n", t);
 
-            if (nthreads == 1 && j == 1) {
+            if (nthreads == 1 && j == 0) {
                 A1 = A; // Save result matrix A with single thread
                 printf("Result matrix A preview:\n");
                 print_matrix(A1, min(5, n)); // Preview result matrix A with single thread
@@ -237,14 +261,17 @@ int main(int argc, char* argv[]) {
         printf("-------------------\n");
         printf("Average statistics [%d]:\n", average);
         const double tn = time / average;
+        times[i][average + 1] = tn;
         if (nthreads == 1) t1 = tn;
-        printf("Computation time: %.2fsec\n", tn);
+        printf("Computation time: %.2f (sec.)\n", tn);
         const double speedup = t1 / tn;
         printf("Speedup: %.2f\n", speedup);
         const double efficency = speedup / nthreads;
         printf("Efficency: %.2f\n\n", efficency);
-        results.emplace_back(nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency);
+        statistics.emplace_back(nthreads, amdahlSpeedup, speedup, amdahlEfficency, efficency);
     }
 
-    return writeResultsToCSV("results_" + to_string(n) + ".csv", results);
+    writeTimesToCSV("times_" + to_string(n) + ".csv", times, pthreads, average);
+    writeStatisticsToCSV("statistics_" + to_string(n) + ".csv", statistics);
+    return 0;
 }
