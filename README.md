@@ -2,3 +2,4 @@
 
 ## Tasks
 1. OpenMP
+2. MPI
