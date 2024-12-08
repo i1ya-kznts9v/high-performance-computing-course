@@ -85,7 +85,7 @@ void summarizeMatrices(const vector<double>& A, const vector<double>& B, const v
 }
 
 void fill_matrices(vector<double>& B, vector<double>& C, vector<double>& E, vector<double>& I, vector<double>& M, const int n) {
-    srand(19);
+    srand(2001);
     generateMatrix(B, n, 0.0, 1.0);
     generateMatrix(C, n, 0.0, 1.0);
     createOnesMatrix(E, n);
