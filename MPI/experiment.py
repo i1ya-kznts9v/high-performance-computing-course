@@ -5,9 +5,7 @@ import matplotlib.pyplot as plt
 
 def run_matrix_computation(processes, dimension):
     sp = subprocess.run(
-        # Only for Windows, for Linux need to change command
-        ['g++', '-I', 'C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64', '-I', 'C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\\x64', '-I',
-         'C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include', '-L', '.', '-lmsmpi', '-g', 'matrix_computation.cpp', '-o', 'matrix_computation.exe'],
+        ['mpic++', '-std=c++17', '-o', 'matrix_computation', 'matrix_computation.cpp'],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
@@ -16,8 +14,7 @@ def run_matrix_computation(processes, dimension):
         raise ChildProcessError('Matrix computation compilation error')
 
     sp = subprocess.run(
-        ['mpiexec', '-n', str(processes),
-         './matrix_computation', str(dimension)],
+        ['mpiexec', '-n', str(processes), './matrix_computation', str(dimension)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
