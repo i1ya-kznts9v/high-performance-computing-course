@@ -63,10 +63,10 @@ def compute_statistics(df: pd.DataFrame):
         if processes == 1:
             t1 = df['Average'][i]
         tn = df['Average'][i]
-        speedup = min(t1 / tn, amdahl_speedup)
+        speedup = t1 / tn
 
         amdahl_efficency = amdahl_speedup / processes
-        efficency = min(speedup / processes, amdahl_efficency)
+        efficency = speedup / processes
 
         statistics_df.loc[i] = [round(processes, 2), round(amdahl_speedup, 2),
                                 round(speedup, 2), round(amdahl_efficency, 2), round(efficency, 2)]
