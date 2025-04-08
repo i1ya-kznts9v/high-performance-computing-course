@@ -10,9 +10,11 @@ int main(int argc, char *argv[]) {
 
     srand(19);
     int average = 5;
-    int dim_1 = 1024;
-    for (int d = 9; d <= 11; d++) {
-        int dim_2 = 1 << d;
+    int dims_1[] = {1024, 2880};
+    int dims_2[] = {1024, 2048, 2880};
+    for (int d = 0; d <= 2; d++) {
+        int dim_1 = dims_1[0]; if (d == 2) dim_1 = dims_1[1];
+        int dim_2 = dims_2[d];
 
         double time_sec = 0.0;
         for (int a = 1; a <= average; a++) {
